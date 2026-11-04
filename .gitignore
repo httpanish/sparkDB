@@ -3,3 +3,5 @@ cmake-build-*/
 .idea/
 .cache/
 compile_commands.json
+CLAUDE.md
+SPEC.md
