@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_library(sparkdb_core
         src/Commands.cpp
         src/KvStore.cpp
+        src/Response.cpp
         src/Tokenizer.cpp)
 target_include_directories(sparkdb_core PUBLIC src)
 target_compile_options(sparkdb_core PRIVATE -Wall -Wextra -Wpedantic)
@@ -28,6 +29,7 @@ enable_testing()
 add_executable(sparkdb_tests
         tests/CommandsTest.cpp
         tests/KvStoreTest.cpp
+        tests/ResponseTest.cpp
         tests/TokenizerTest.cpp)
 target_link_libraries(sparkdb_tests PRIVATE sparkdb_core Catch2::Catch2WithMain)
 target_compile_options(sparkdb_tests PRIVATE -Wall -Wextra -Wpedantic)

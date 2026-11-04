@@ -16,9 +16,9 @@ int main() {
 
         const auto tokens = sparkDB::Tokenize(line);
         if (!tokens) {
-            std::cout << "ERR invalid quoting\n";
+            std::cout << "(error) ERR invalid quoting\n";
         } else if (!tokens->empty()) {
-            std::cout << sparkDB::Execute(store, *tokens) << '\n';
+            std::cout << sparkDB::ToDisplay(sparkDB::Execute(store, *tokens)) << '\n';
         }
     }
 

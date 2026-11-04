@@ -5,11 +5,12 @@
 #include <vector>
 
 #include "KvStore.h"
+#include "Response.h"
 
 namespace sparkDB {
-    // Runs a command and returns the text to show. args[0] is the command name,
+    // Runs a command and returns its reply. args[0] is the command name,
     // in any case. args must not be empty.
-    std::string Execute(KvStore &store, const std::vector<std::string> &args);
+    Response Execute(KvStore &store, const std::vector<std::string> &args);
 }
 
 #endif //SPARKDB_COMMANDS_H

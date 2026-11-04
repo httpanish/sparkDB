@@ -11,19 +11,33 @@ namespace sparkDB {
             return text;
         }
 
-        std::string WrongArgCount(const std::string &name) {
-            return "ERR wrong number of arguments for '" + name + "' command";
+        Response WrongArgCount(const std::string &name) {
+            return {ResponseType::Error, "ERR wrong number of arguments for '" + name + "' command"};
         }
     }
 
-    std::string Execute(KvStore &store, const std::vector<std::string> &args) {
+    Response Execute(KvStore &store, const std::vector<std::string> &args) {
         const std::string name = ToLower(args[0]);
+
+        if (name == "ping") {
+            if (args.size() == 1) {
+                return {ResponseType::Simple, "PONG"};
+            }
+            if (args.size() == 2) {
+                return {ResponseType::Bulk, args[1]};
+            }
+            return WrongArgCount(name);
+        }
 
         if (name == "get") {
             if (args.size() != 2) {
                 return WrongArgCount(name);
             }
-            return store.Get(args[1]).value_or("(nil)");
+            const auto value = store.Get(args[1]);
+            if (!value) {
+                return {ResponseType::Null, ""};
+            }
+            return {ResponseType::Bulk, *value};
         }
 
         if (name == "set") {
@@ -31,16 +45,16 @@ namespace sparkDB {
                 return WrongArgCount(name);
             }
             store.Set(args[1], args[2]);
-            return "OK";
+            return {ResponseType::Simple, "OK"};
         }
 
         if (name == "del") {
             if (args.size() != 2) {
                 return WrongArgCount(name);
             }
-            return store.Delete(args[1]) ? "1" : "0";
+            return {ResponseType::Integer, store.Delete(args[1]) ? "1" : "0"};
         }
 
-        return "ERR unknown command '" + args[0] + "'";
+        return {ResponseType::Error, "ERR unknown command '" + args[0] + "'"};
     }
 }
