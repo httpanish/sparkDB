@@ -5,7 +5,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_library(sparkdb_core src/KvStore.cpp)
+add_library(sparkdb_core
+        src/Commands.cpp
+        src/KvStore.cpp
+        src/Tokenizer.cpp)
 target_include_directories(sparkdb_core PUBLIC src)
 target_compile_options(sparkdb_core PRIVATE -Wall -Wextra -Wpedantic)
 
@@ -22,7 +25,10 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 enable_testing()
-add_executable(sparkdb_tests tests/KvStoreTest.cpp)
+add_executable(sparkdb_tests
+        tests/CommandsTest.cpp
+        tests/KvStoreTest.cpp
+        tests/TokenizerTest.cpp)
 target_link_libraries(sparkdb_tests PRIVATE sparkdb_core Catch2::Catch2WithMain)
 target_compile_options(sparkdb_tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME sparkdb_tests COMMAND sparkdb_tests)

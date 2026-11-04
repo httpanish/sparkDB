@@ -36,7 +36,7 @@ No third-party libraries in the database itself. Tests use Catch2.
        |                     |
   line tokenizer        RESP parser/encoder
        \                    /
-        Command dispatcher          <- no I/O; args in, Response out
+             Commands               <- no I/O; args in, reply out
                 |
              KvStore                <- data and expiry; knows nothing about commands
                 |
@@ -46,8 +46,8 @@ No third-party libraries in the database itself. Tests use Catch2.
 Design rules:
 
 1. **Commands are independent of I/O.** A command takes a list of arguments and
-   returns a `Response` value, so the REPL, the server, and log replay can all
-   share one code path.
+   returns a reply, so the REPL, the server, and log replay can all share one
+   code path. The reply is plain text until Phase 3 needs typed replies.
 2. **Commands run on one thread.** They run one at a time and each is atomic, so
    the store needs no locks. This is the Redis model.
 3. **Time is injectable.** Expiry reads time through a clock the tests can
@@ -141,12 +141,7 @@ with the program working. Do them in order; a phase depends on the ones before i
 |------|---------------------|-----------------------------------------------------------|----------------------------|
 | 1.1  | Tokenizer           | `SET a b` becomes `["SET", "a", "b"]`                     | `std::string_view`, parsing |
 | 1.2  | Quoted tokens       | `SET a "b c\n"` works; an unclosed quote is an error      | Small state machines       |
-| 1.3  | `Response` type     | It holds every reply kind and can print itself            | `std::variant`             |
-| 1.4  | Dispatcher + `PING` | Case-insensitive lookup; unknown commands return an error | Function tables, lambdas   |
-| 1.5  | Argument checks     | Each command declares its arity, checked in one place     | Table-driven design        |
-| 1.6  | `GET`, `SET`, `DEL` | The REPL can store and read data                          | Layering                   |
-| 1.7  | `EXISTS`, `DBSIZE`, `FLUSHALL`, `ECHO` | All work; `DEL` and `EXISTS` take several keys | Extending the table |
-| 1.8  | `APPEND`, `INCR`, `DECR` | Non-integer values and overflow return errors        | `std::from_chars`, overflow |
+| 1.3  | `GET`, `SET`, `DEL` | The REPL can store and read data; wrong argument counts and unknown commands return an error | Layering |
 
 ### Phase 2: Expiry
 
@@ -161,6 +156,7 @@ with the program working. Do them in order; a phase depends on the ones before i
 
 | ID   | Feature               | Done when                                                  | You'll learn               |
 |------|-----------------------|------------------------------------------------------------|----------------------------|
+| 3.0  | Typed replies + `PING` | Commands return a `Response` type that holds each reply kind, instead of text | `std::variant` |
 | 3.1  | RESP encoder          | Each `Response` kind encodes to the right bytes            | Wire formats               |
 | 3.2  | RESP parser           | Parses a complete request from a buffer                    | Length-prefixed framing    |
 | 3.3  | Partial input         | Input split at any byte still parses; bad input is an error | Incremental parsing        |
@@ -170,6 +166,8 @@ with the program working. Do them in order; a phase depends on the ones before i
 | 3.7  | Pipelining            | 1000 pipelined `PING`s return 1000 ordered replies         | Buffer management          |
 | 3.8  | Active expiry         | Expired keys that are never read still get removed         | Timers, sampling           |
 | 3.9  | Clean shutdown        | SIGINT/SIGTERM stops the server cleanly; no ASan errors    | Signals, `signalfd`        |
+| 3.10 | More key commands     | `ECHO`, `EXISTS`, `DBSIZE`, and `FLUSHALL` work; `DEL` and `EXISTS` take several keys | Extending commands |
+| 3.11 | `APPEND`, `INCR`, `DECR` | Non-integer values and overflow return errors           | `std::from_chars`, overflow |
 
 ### Phase 4: Data types
 
