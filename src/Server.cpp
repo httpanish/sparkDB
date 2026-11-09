@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cerrno>
 #include <cstring>
 #include <iostream>
@@ -20,6 +21,7 @@ namespace sparkDB {
     struct Connection {
         std::string readBuffer;
         std::string writeBuffer;
+        std::chrono::steady_clock::time_point lastActivity;
         bool closing = false; // protocol error sent; close once writeBuffer is empty
     };
 
@@ -87,10 +89,12 @@ namespace sparkDB {
     }
 
     void Server::Run() {
+        const auto waitMs = static_cast<int>(std::min<std::chrono::milliseconds::rep>(
+            1000, std::max<std::chrono::milliseconds::rep>(1, config_.idleTimeout.count())));
         epoll_event events[64];
 
         while (true) {
-            const int count = epoll_wait(epollFd_, events, std::size(events), -1);
+            const int count = epoll_wait(epollFd_, events, std::size(events), waitMs);
             Check(count >= 0 || errno == EINTR, "epoll_wait");
 
             for (int i = 0; i < count; ++i) {
@@ -107,6 +111,8 @@ namespace sparkDB {
                     HandleClient(fd, events[i].events);
                 }
             }
+
+            CloseIdleClients();
         }
     }
 
@@ -136,7 +142,7 @@ namespace sparkDB {
             }
 
             UpdateEpoll(epollFd_, EPOLL_CTL_ADD, fd, EPOLLIN);
-            connections_.try_emplace(fd);
+            connections_[fd].lastActivity = std::chrono::steady_clock::now();
         }
     }
 
@@ -169,6 +175,7 @@ namespace sparkDB {
             return errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR;
         }
         connection.readBuffer.append(chunk, static_cast<std::size_t>(n));
+        connection.lastActivity = std::chrono::steady_clock::now();
 
         std::size_t offset = 0;
         while (true) {
@@ -205,6 +212,7 @@ namespace sparkDB {
                 break;
             }
             connection.writeBuffer.erase(0, static_cast<std::size_t>(n));
+            connection.lastActivity = std::chrono::steady_clock::now();
         }
 
         if (connection.writeBuffer.empty() && connection.closing) {
@@ -216,6 +224,18 @@ namespace sparkDB {
         }
         UpdateEpoll(epollFd_, EPOLL_CTL_MOD, fd, events);
         return true;
+    }
+
+    void Server::CloseIdleClients() {
+        const auto now = std::chrono::steady_clock::now();
+        for (auto it = connections_.begin(); it != connections_.end();) {
+            const int fd = it->first;
+            const bool idle = now - it->second.lastActivity > config_.idleTimeout;
+            ++it;
+            if (idle) {
+                CloseClient(fd);
+            }
+        }
     }
 
     void Server::CloseClient(int fd) {

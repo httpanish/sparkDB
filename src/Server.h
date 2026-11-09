@@ -1,6 +1,7 @@
 #ifndef SPARKDB_SERVER_H
 #define SPARKDB_SERVER_H
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
@@ -10,6 +11,7 @@
 namespace sparkDB {
     struct ServerConfig {
         std::size_t maxClients = 1000;
+        std::chrono::milliseconds idleTimeout = std::chrono::seconds(300);
     };
 
     struct Connection;
@@ -33,6 +35,7 @@ namespace sparkDB {
         void HandleClient(int fd, std::uint32_t events);
         bool ReadFrom(int fd); // false if the connection should close
         bool Flush(int fd); // false if the connection should close
+        void CloseIdleClients();
         void CloseClient(int fd);
         void CloseAll();
 

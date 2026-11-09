@@ -222,6 +222,23 @@ TEST_CASE("Server rejects clients over the cap and accepts again after a disconn
     REQUIRE(fourth.Roundtrip(Command({"PING"}), 7) == "+PONG\r\n");
 }
 
+TEST_CASE("Server closes idle clients but keeps active ones") {
+    using namespace std::chrono;
+    RunningServer server(ServerConfig{.idleTimeout = milliseconds(100)});
+    Client idle(server.Port());
+    Client active(server.Port());
+
+    const auto start = steady_clock::now();
+    for (int i = 0; i < 10; ++i) {
+        REQUIRE(active.Roundtrip(Command({"PING"}), 7) == "+PONG\r\n");
+        std::this_thread::sleep_for(milliseconds(50));
+    }
+
+    REQUIRE(idle.SeesEof());
+    REQUIRE(steady_clock::now() - start < milliseconds(1500));
+    REQUIRE(active.Roundtrip(Command({"PING"}), 7) == "+PONG\r\n");
+}
+
 TEST_CASE("Stop makes Run return and closes connected clients") {
     RunningServer server;
     Client client(server.Port());
