@@ -61,3 +61,19 @@ TEST_CASE("Size counts keys") {
     REQUIRE_FALSE(store.Delete("missing"));
     REQUIRE(store.Size() == 1);
 }
+
+TEST_CASE("The table doubles before the key that would pass load factor 1") {
+    KvStore store;
+    for (const char *key: {"a", "b", "c", "d"}) {
+        store.Set(key, "v");
+    }
+    REQUIRE(store.BucketCount() == 4);
+
+    store.Set("e", "v");
+    REQUIRE(store.BucketCount() == 8);
+
+    for (const char *key: {"a", "b", "c", "d", "e"}) {
+        REQUIRE_FALSE(store.Set(key, "new"));
+    }
+    REQUIRE(store.BucketCount() == 8);
+}

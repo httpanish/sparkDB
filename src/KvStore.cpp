@@ -31,6 +31,20 @@ namespace sparkDB {
         return slot;
     }
 
+    void KvStore::Grow() {
+        std::vector<std::unique_ptr<Node>> grown(buckets_.size() * 2);
+        for (auto &head: buckets_) {
+            while (head) {
+                auto node = std::move(head);
+                head = std::move(node->next);
+                auto &target = grown[node->hash & (grown.size() - 1)];
+                node->next = std::move(target);
+                target = std::move(node);
+            }
+        }
+        buckets_ = std::move(grown);
+    }
+
     std::optional<std::string> KvStore::Get(const std::string &key) const {
         const std::size_t hash = Hash(key);
         for (const Node *node = buckets_[hash & (buckets_.size() - 1)].get(); node; node = node->next.get()) {
@@ -46,6 +60,9 @@ namespace sparkDB {
         if (auto *slot = FindSlot(hash, key); *slot) {
             (*slot)->value = value;
             return false;
+        }
+        if (size_ == buckets_.size()) {
+            Grow();
         }
         auto &head = buckets_[hash & (buckets_.size() - 1)];
         head = std::make_unique<Node>(Node{hash, key, value, std::move(head)});

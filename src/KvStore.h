@@ -41,6 +41,9 @@ namespace sparkDB {
         // Returns the owner of the node holding key, or of the empty end of its chain.
         std::unique_ptr<Node> *FindSlot(std::size_t hash, const std::string &key);
 
+        // Doubles the bucket count, relinking every node by its cached hash.
+        void Grow();
+
         std::vector<std::unique_ptr<Node>> buckets_; // each bucket is the head of a chain
         std::size_t size_ = 0;
     };
