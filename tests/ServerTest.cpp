@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cstdint>
 #include <initializer_list>
+#include <memory>
 #include <string>
 #include <thread>
 
@@ -18,12 +19,13 @@
 
 using sparkDB::KvStore;
 using sparkDB::Server;
+using sparkDB::ServerConfig;
 
 namespace {
     // Runs a Server on a free port in a background thread for the test's lifetime.
     class RunningServer {
     public:
-        RunningServer() : server_(store_) {
+        explicit RunningServer(ServerConfig config = {}) : server_(store_, config) {
             REQUIRE(server_.Listen(0));
             thread_ = std::thread([this] { server_.Run(); });
         }
@@ -200,6 +202,24 @@ TEST_CASE("Server flushes replies and the protocol error before closing") {
     REQUIRE(bad.Roundtrip(Command({"PING"}) + "garbage\r\n", expected.size()) == expected);
     REQUIRE(bad.SeesEof());
     REQUIRE(other.Roundtrip(Command({"PING"}), 7) == "+PONG\r\n");
+}
+
+TEST_CASE("Server rejects clients over the cap and accepts again after a disconnect") {
+    RunningServer server(ServerConfig{.maxClients = 2});
+    auto first = std::make_unique<Client>(server.Port());
+    Client second(server.Port());
+    REQUIRE(first->Roundtrip(Command({"PING"}), 7) == "+PONG\r\n");
+    REQUIRE(second.Roundtrip(Command({"PING"}), 7) == "+PONG\r\n");
+
+    Client third(server.Port());
+    const std::string error = "-ERR max number of clients reached\r\n";
+    REQUIRE(third.Read(error.size()) == error);
+    REQUIRE(third.SeesEof());
+
+    first.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    Client fourth(server.Port());
+    REQUIRE(fourth.Roundtrip(Command({"PING"}), 7) == "+PONG\r\n");
 }
 
 TEST_CASE("Stop makes Run return and closes connected clients") {

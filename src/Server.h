@@ -1,18 +1,23 @@
 #ifndef SPARKDB_SERVER_H
 #define SPARKDB_SERVER_H
 
+#include <cstddef>
 #include <cstdint>
 #include <unordered_map>
 
 #include "KvStore.h"
 
 namespace sparkDB {
+    struct ServerConfig {
+        std::size_t maxClients = 1000;
+    };
+
     struct Connection;
 
     // Single-threaded, level-triggered epoll server speaking RESP2.
     class Server {
     public:
-        explicit Server(KvStore &store);
+        explicit Server(KvStore &store, ServerConfig config = {});
         ~Server();
 
         Server(const Server &) = delete;
@@ -32,6 +37,7 @@ namespace sparkDB {
         void CloseAll();
 
         KvStore &store_;
+        ServerConfig config_;
         int epollFd_ = -1;
         int stopFd_ = -1;
         int listenFd_ = -1;

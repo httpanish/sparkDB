@@ -38,7 +38,7 @@ namespace sparkDB {
         }
     }
 
-    Server::Server(KvStore &store) : store_(store) {
+    Server::Server(KvStore &store, ServerConfig config) : store_(store), config_(config) {
         epollFd_ = epoll_create1(EPOLL_CLOEXEC);
         Check(epollFd_ >= 0, "epoll_create1");
         stopFd_ = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -126,6 +126,13 @@ namespace sparkDB {
                     std::cerr << "accept: " << std::strerror(errno) << '\n';
                 }
                 return;
+            }
+
+            if (connections_.size() >= config_.maxClients) {
+                const std::string reply = ToResp({ResponseType::Error, "ERR max number of clients reached"});
+                (void) send(fd, reply.data(), reply.size(), MSG_NOSIGNAL | MSG_DONTWAIT);
+                close(fd);
+                continue;
             }
 
             UpdateEpoll(epollFd_, EPOLL_CTL_ADD, fd, EPOLLIN);
