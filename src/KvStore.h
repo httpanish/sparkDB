@@ -16,8 +16,10 @@ namespace sparkDB {
 
         KvStore(const KvStore &) = delete;
         KvStore &operator=(const KvStore &) = delete;
-        KvStore(KvStore &&) noexcept = default;
-        KvStore &operator=(KvStore &&) noexcept = default;
+        // A moved-from store stays usable: empty after a move construction,
+        // holding the target's old keys after a move assignment.
+        KvStore(KvStore &&other) noexcept;
+        KvStore &operator=(KvStore &&other) noexcept;
 
         std::optional<std::string> Get(const std::string &key) const;
 

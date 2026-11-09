@@ -3,6 +3,7 @@
 #include <random>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "KvStore.h"
 
@@ -78,6 +79,33 @@ TEST_CASE("The table doubles before the key that would pass load factor 1") {
         REQUIRE_FALSE(store.Set(key, "new"));
     }
     REQUIRE(store.BucketCount() == 8);
+}
+
+TEST_CASE("Moving a store carries its keys and leaves the source usable") {
+    KvStore source;
+    for (int i = 0; i < 10; ++i) {
+        source.Set(std::to_string(i), "v");
+    }
+
+    KvStore moved(std::move(source));
+    REQUIRE(moved.Size() == 10);
+    REQUIRE(moved.Get("3") == "v");
+
+    REQUIRE(source.Size() == 0);
+    REQUIRE(source.BucketCount() == 4);
+    REQUIRE_FALSE(source.Get("3").has_value());
+    REQUIRE(source.Set("new", "x"));
+    REQUIRE(source.Get("new") == "x");
+
+    KvStore assigned;
+    assigned.Set("old", "o");
+    assigned = std::move(moved);
+    REQUIRE(assigned.Size() == 10);
+    REQUIRE(assigned.Get("3") == "v");
+    REQUIRE_FALSE(assigned.Get("old").has_value());
+
+    REQUIRE(moved.Set("again", "y"));
+    REQUIRE(moved.Get("again") == "y");
 }
 
 TEST_CASE("The table keeps doubling as keys are added") {

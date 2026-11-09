@@ -1,6 +1,7 @@
 #include "KvStore.h"
 
 #include <string_view>
+#include <utility>
 
 namespace sparkDB {
     namespace {
@@ -21,6 +22,17 @@ namespace sparkDB {
                 head = std::move(head->next);
             }
         }
+    }
+
+    KvStore::KvStore(KvStore &&other) noexcept : KvStore() {
+        *this = std::move(other);
+    }
+
+    // Swapping hands our old nodes to other, whose destructor frees them without recursion.
+    KvStore &KvStore::operator=(KvStore &&other) noexcept {
+        std::swap(buckets_, other.buckets_);
+        std::swap(size_, other.size_);
+        return *this;
     }
 
     std::unique_ptr<KvStore::Node> *KvStore::FindSlot(const std::size_t hash, const std::string &key) {
