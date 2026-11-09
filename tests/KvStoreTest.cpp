@@ -39,3 +39,25 @@ TEST_CASE("Keys and values may contain null bytes") {
     REQUIRE(store.Get(key) == value);
     REQUIRE_FALSE(store.Get("a").has_value());
 }
+
+TEST_CASE("A new store is empty and starts with 4 buckets") {
+    const KvStore store;
+    REQUIRE(store.Size() == 0);
+    REQUIRE(store.BucketCount() == 4);
+}
+
+TEST_CASE("Size counts keys") {
+    KvStore store;
+    store.Set("a", "1");
+    store.Set("b", "2");
+    REQUIRE(store.Size() == 2);
+
+    store.Set("a", "3");
+    REQUIRE(store.Size() == 2);
+
+    REQUIRE(store.Delete("a"));
+    REQUIRE(store.Size() == 1);
+
+    REQUIRE_FALSE(store.Delete("missing"));
+    REQUIRE(store.Size() == 1);
+}
