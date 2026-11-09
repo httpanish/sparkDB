@@ -19,6 +19,10 @@ add_executable(sparkdb src/main.cpp)
 target_link_libraries(sparkdb PRIVATE sparkdb_core)
 target_compile_options(sparkdb PRIVATE -Wall -Wextra -Wpedantic)
 
+add_executable(sparkdb_server src/server_main.cpp)
+target_link_libraries(sparkdb_server PRIVATE sparkdb_core)
+target_compile_options(sparkdb_server PRIVATE -Wall -Wextra -Wpedantic)
+
 include(FetchContent)
 FetchContent_Declare(
         Catch2
