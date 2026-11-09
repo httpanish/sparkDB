@@ -10,6 +10,7 @@ add_library(sparkdb_core
         src/KvStore.cpp
         src/Response.cpp
         src/RespParser.cpp
+        src/Server.cpp
         src/Tokenizer.cpp)
 target_include_directories(sparkdb_core PUBLIC src)
 target_compile_options(sparkdb_core PRIVATE -Wall -Wextra -Wpedantic)
@@ -32,7 +33,9 @@ add_executable(sparkdb_tests
         tests/KvStoreTest.cpp
         tests/RespParserTest.cpp
         tests/ResponseTest.cpp
+        tests/ServerTest.cpp
         tests/TokenizerTest.cpp)
-target_link_libraries(sparkdb_tests PRIVATE sparkdb_core Catch2::Catch2WithMain)
+find_package(Threads REQUIRED)
+target_link_libraries(sparkdb_tests PRIVATE sparkdb_core Catch2::Catch2WithMain Threads::Threads)
 target_compile_options(sparkdb_tests PRIVATE -Wall -Wextra -Wpedantic)
 add_test(NAME sparkdb_tests COMMAND sparkdb_tests)
