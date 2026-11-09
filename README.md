@@ -149,7 +149,7 @@ ctest --test-dir build --output-on-failure    # everything
 ./build/sparkdb_tests --list-tests            # see what's there
 ```
 
-there are 50 test cases. the store tests check resizing, 100,000 keys, and 100,000 random operations against `std::unordered_map`. the server tests use real sockets against a real server on a random port, covering things like 10,000 pipelined commands sent before reading anything, 8 MiB of replies pushed through a tiny receive buffer, the client cap, idle timeouts, and protocol errors. every read has a timeout, so a bug fails the test instead of hanging it.
+there are 51 test cases. the store tests check resizing, 100,000 keys, and 100,000 random operations against `std::unordered_map`. the server tests use real sockets against a real server on a random port, covering things like 10,000 pipelined commands sent before reading anything, 8 MiB of replies pushed through a tiny receive buffer, the client cap, idle timeouts, and protocol errors. every read has a timeout, so a bug fails the test instead of hanging it.
 
 the suite also passes under address and undefined-behaviour sanitizers:
 
@@ -204,10 +204,12 @@ the store used to be a `std::unordered_map<std::string, std::string>`. both vers
 | `SET`, 50 clients, pipeline 16, 1M keys | 1,037,527 | 1,139,748 | +10% |
 | `GET`, 50 clients, pipeline 16, 1M keys | 1,037,222 | 1,184,605 | +14% |
 | memory, 10k keys | 5.2 MB | 5.2 MB | same |
-| memory, 1M keys | 151.9 MB | 149.1 MB | −2% |
+| `GET`, 1 client, pipeline 16, 1M keys | 581,445 | 496,690 | −15% |
+| memory, 1M keys | 152.0 MB | 149.1 MB | −2% |
 
-- **with 10,000 keys there's no real difference.** the gaps are smaller than the run-to-run noise, and without pipelining every column is within a few percent.
-- **with 1,000,000 keys the custom table was ahead on pipelined `SET` and `GET` with 50 clients**, in both of the two runs made (by 9–14%). the other 1M-key columns were within noise.
+- **the results are mixed, not a clear win.** differences of 10–15% showed up in both directions, about the same size as the run-to-run noise.
+- **with 10,000 keys:** in the run shown, every column is within a few percent. in the first run, though, the custom table was 13–16% *slower* on pipelined `SET` and `GET` with 50 clients (1,201,532 vs 1,378,011 and 1,280,748 vs 1,532,355). other work was running on the machine during part of that first run, which may explain it, but it wasn't repeated a third time to be sure.
+- **with 1,000,000 keys:** the custom table was ahead on pipelined `SET` and `GET` with 50 clients in both runs (by 9–14%). but single-client pipelined `GET` was 15% *slower* in the run shown (496,690 vs 581,445), while in the first run it was 2% faster. the other columns were within a few percent.
 - **memory is about the same**, slightly lower for the custom table at 1M keys.
 - the table grows **stop-the-world**: the one `SET` that triggers a doubling relinks every key while other clients wait. these runs preload keys before timing, so that spike isn't in the numbers. incremental rehashing (like redis's `dict`) is the planned fix.
 
